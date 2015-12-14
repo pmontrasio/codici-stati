@@ -123,27 +123,15 @@ country_codes.each do |taxcode_country_code, data|
 end
 tax_csv.close
 
+File.open("dist/country_codes.json", "w") do |file|
+  file.puts country_codes.to_json
+end
+
+File.open("dist/countries.json", "w") do |file|
+  file.puts countries.to_json
+end
+
 records = (country_codes.values + countries.values).uniq
-
-#mongo
-#use country_codes
-#db.createCollection("countryCodes")
-
-def text(value)
-  if value.nil?
-    "NULL"
-  else
-    "'#{value}'"
-  end
-end
-
-def number(value)
-  if value.nil?
-    "NULL"
-  else
-    value
-  end
-end
 
 # insert in postgres
 #psql -U postgres
@@ -156,6 +144,7 @@ psql_query = "INSERT INTO country_codes (english_country_name, italian_country_n
 pg_conn.prepare("insert_data", psql_query)
 pg_conn.exec("DELETE FROM country_codes")
 
+time_start = Time.now
 pg_conn.transaction do |conn|
   records.each do |country|
     conn.exec_prepared("insert_data", [country[:english_country_name], country[:italian_country_name_1],
@@ -164,7 +153,9 @@ pg_conn.transaction do |conn|
                                        country[:istat], country[:minint]])
   end
 end
+time_end = Time.now
 pg_conn.close
+psql_time = time_end - time_start
 # pg_dump -U postgres --table country_codes country_codes > dist/country_codes.psql
 
 # insert in mysql
@@ -177,6 +168,7 @@ mysql_conn = Mysql2::Client.new(host: "localhost", username: ENV["MYSQL_USER"], 
 mysql_query = "INSERT INTO country_codes (english_country_name, italian_country_name_1, italian_country_name_2, iso3361_3_characters, iso3361_2_characters, taxcode_country_code, istat, minint) VALUES (?, ?, ?, ?, ?, ?, ?, ?)"
 insert_data = mysql_conn.prepare(mysql_query)
 mysql_conn.query("DELETE FROM country_codes")
+time_start = Time.now
 begin
   mysql_conn.query("BEGIN")
   records.each do |country|
@@ -190,9 +182,44 @@ rescue => e
   p e
   mysql_conn.query("ROLLBACK")
 end
+time_end = Time.now
 mysql_conn.close
+mysql_time = time_end - time_start
 # mysqldump -u root -p country_codes country_codes > dist/country_codes.mysql
 
-records.each do |country|
-  # insert in mongo
+# insert in mongo
+class CountryCode
+  include Mongoid::Document
+  field :english_country_name, type: String
+  field :italian_country_name_1, type: String
+  field :iso3361_3_characters, type: String
+  field :iso3361_2_characters, type: String
+  field :taxcode_country_code, type: String
+  field :istat, type: Integer
+  field :minint, type: Integer
 end
+
+#mongo
+#use country_codes
+#db.createCollection("countryCodes")
+Mongoid.load!("mongo.yml", :development)
+Mongoid.logger.level = Logger::INFO
+Mongo::Logger.logger.level = Logger::INFO
+CountryCode.delete_all
+time_start = Time.now
+records.each do |country|
+  CountryCode.create(
+                     english_country_name: country[:english_country_name],
+                     italian_country_name_1: country[:italian_country_name_1],
+                     iso3361_3_characters: country[:iso3361_3_characters],
+                     iso3361_2_characters: country[:iso3361_2_characters],
+                     taxcode_country_code: country[:taxcode_country_code],
+                     istat: country[:istat],
+                     minint: country[:minint])
+end
+time_end = Time.now
+mongo_time = time_end - time_start
+# mongoexport --collection country_codes --out dist/country_codes.json --db country_codes > dist/country_codes.mongodb.json
+
+#puts "PostgreSQL,MySQL,MongoDB"
+#puts "#{psql_time},#{mysql_time},#{mongo_time}"

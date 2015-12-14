@@ -1,0 +1,6 @@
+development:
+  clients:
+    default:
+      database: country_codes
+      hosts:
+        - localhost:27017
