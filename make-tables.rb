@@ -133,11 +133,11 @@ end
 
 records = (country_codes.values + countries.values).uniq
 
-# insert in postgres
-#psql -U postgres
-#create database country_codes encoding='UTF8' lc_collate='en_US.UTF-8' lc_ctype='en_US.UTF-8';
-#psql -U postgres country_codes
-#create table country_codes (english_country_name text, italian_country_name_1 text, italian_country_name_2 text, iso3361_3_characters char(3), iso3361_2_characters char(2), taxcode_country_code char(4), istat integer, minint integer);
+# CONFIGURATION
+# $ psql -U postgres
+# > create database country_codes encoding='UTF8' lc_collate='en_US.UTF-8' lc_ctype='en_US.UTF-8';
+# $ psql -U postgres country_codes
+# > create table country_codes (english_country_name text, italian_country_name_1 text, italian_country_name_2 text, iso3361_3_characters char(3), iso3361_2_characters char(2), taxcode_country_code char(4), istat integer, minint integer);
 
 pg_conn = PG.connect( dbname: 'country_codes', user: "postgres" )
 psql_query = "INSERT INTO country_codes (english_country_name, italian_country_name_1, italian_country_name_2, iso3361_3_characters, iso3361_2_characters, taxcode_country_code, istat, minint) VALUES ($1::text, $2::text, $3::text, $4::text, $5::char(3), $6::char(4), $7::int, $8::int)"
@@ -156,13 +156,13 @@ end
 time_end = Time.now
 pg_conn.close
 psql_time = time_end - time_start
-# pg_dump -U postgres --table country_codes country_codes > dist/country_codes.psql
+# $ pg_dump -U postgres --table country_codes country_codes > dist/country_codes.psql
 
-# insert in mysql
-#mysql -u root -p
-#create database country_codes default character set utf8 collate utf8_unicode_ci;
-#mysql -u root -p country_codes
-#create table country_codes (english_country_name text, italian_country_name_1 text, italian_country_name_2 text, iso3361_3_characters char(3), iso3361_2_characters char(2), taxcode_country_code char(4), istat integer, minint integer);
+# CONFIGURATION
+# $ mysql -u root -p
+# > create database country_codes default character set utf8 collate utf8_unicode_ci;
+# $ mysql -u root -p country_codes
+# > create table country_codes (english_country_name text, italian_country_name_1 text, italian_country_name_2 text, iso3361_3_characters char(3), iso3361_2_characters char(2), taxcode_country_code char(4), istat integer, minint integer);
 
 mysql_conn = Mysql2::Client.new(host: "localhost", username: ENV["MYSQL_USER"], password: ENV["MYSQL_PASS"], database: "country_codes")
 mysql_query = "INSERT INTO country_codes (english_country_name, italian_country_name_1, italian_country_name_2, iso3361_3_characters, iso3361_2_characters, taxcode_country_code, istat, minint) VALUES (?, ?, ?, ?, ?, ?, ?, ?)"
@@ -185,9 +185,8 @@ end
 time_end = Time.now
 mysql_conn.close
 mysql_time = time_end - time_start
-# mysqldump -u root -p country_codes country_codes > dist/country_codes.mysql
+# $ mysqldump -u root -p country_codes country_codes > dist/country_codes.mysql
 
-# insert in mongo
 class CountryCode
   include Mongoid::Document
   field :english_country_name, type: String
@@ -199,9 +198,10 @@ class CountryCode
   field :minint, type: Integer
 end
 
-#mongo
-#use country_codes
-#db.createCollection("countryCodes")
+# CONFIGURATION
+# $ mongo
+# > use country_codes
+# > db.createCollection("countryCodes")
 Mongoid.load!("mongo.yml", :development)
 Mongoid.logger.level = Logger::INFO
 Mongo::Logger.logger.level = Logger::INFO
