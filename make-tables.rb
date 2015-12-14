@@ -221,5 +221,5 @@ time_end = Time.now
 mongo_time = time_end - time_start
 # mongoexport --collection country_codes --out dist/country_codes.json --db country_codes > dist/country_codes.mongodb.json
 
-#puts "PostgreSQL,MySQL,MongoDB"
-#puts "#{psql_time},#{mysql_time},#{mongo_time}"
+puts "PostgreSQL,MySQL,MongoDB"
+puts "#{psql_time},#{mysql_time},#{mongo_time}"
