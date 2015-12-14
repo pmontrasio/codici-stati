@@ -1,6 +1,9 @@
 require "rubygems"
 require "simple-spreadsheet"
 require "byebug"
+require "pg"
+require "mysql2"
+require "mongoid"
 
 countries = {} # countries indexed by iso3361_3_characters
 country_codes = {} # countries indexed by the taxcode country code
@@ -24,7 +27,9 @@ insiel.selected_sheet = insiel.sheets.first
   iso3361_3_characters = insiel.cell(line, 5)
   italian_country_name_1 = insiel.cell(line, 1)
   istat = insiel.cell(line, 2).to_i
+  istat = nil if istat == 0
   minint = insiel.cell(line, 3).to_i
+  minint = nil if minint == 0
   taxcode_country_code = insiel.cell(line, 8)
   if iso3361_3_characters
     record = countries[iso3361_3_characters]
@@ -90,15 +95,104 @@ agenzia_entrate.selected_sheet = agenzia_entrate.sheets.first
   end
 end
 
+countries["ITA"] = {
+  english_country_name: "Italy",
+  italian_country_name_1: "Italia",
+  italian_country_name_2: "",
+  iso3361_3_characters: "ITA",
+  iso3361_2_characters: "IT",
+  taxcode_country_code: "",
+  istat: nil,
+  minint: nil
+}
 
-#countries.each do |iso3361_3_characters, data|
-#  puts "#{data[:english_country_name]}\t#{data[:italian_country_name_1]}\t#{data[:italian_country_name_2]}\t#{data[:iso3361_3_characters]}\t#{data[:iso3361_2_characters]}\t#{data[:taxcode_country_code]}\t#{data[:istat]}\t#{data[:minint]}"
-#end
-
-#puts "--------------------"
-
-country_codes.each do |taxcode_country_code, data|
-  puts "#{data[:english_country_name]}\t#{data[:italian_country_name_1]}\t#{data[:italian_country_name_2]}\t#{data[:iso3361_3_characters]}\t#{data[:iso3361_2_characters]}\t#{data[:taxcode_country_code]}\t#{data[:istat]}\t#{data[:minint]}"
+def record_to_s(data)
+  "#{data[:english_country_name]}\t#{data[:italian_country_name_1]}\t#{data[:italian_country_name_2]}\t#{data[:iso3361_3_characters]}\t#{data[:iso3361_2_characters]}\t#{data[:taxcode_country_code]}\t#{data[:istat]}\t#{data[:minint]}"
 end
 
-puts "Italy\tItalia\t\tITA\tIT\t\t\t"
+
+iso_csv = File.open("dist/iso.csv", "w")
+countries.each do |iso3361_3_characters, data|
+  iso_csv.puts record_to_s(data)
+end
+iso_csv.close
+
+tax_csv = File.open("dist/tax.csv", "w")
+country_codes.each do |taxcode_country_code, data|
+  tax_csv.puts record_to_s(data)
+end
+tax_csv.close
+
+records = (country_codes.values + countries.values).uniq
+
+#mongo
+#use country_codes
+#db.createCollection("countryCodes")
+
+def text(value)
+  if value.nil?
+    "NULL"
+  else
+    "'#{value}'"
+  end
+end
+
+def number(value)
+  if value.nil?
+    "NULL"
+  else
+    value
+  end
+end
+
+# insert in postgres
+#psql -U postgres
+#create database country_codes encoding='UTF8' lc_collate='en_US.UTF-8' lc_ctype='en_US.UTF-8';
+#psql -U postgres country_codes
+#create table country_codes (english_country_name text, italian_country_name_1 text, italian_country_name_2 text, iso3361_3_characters char(3), iso3361_2_characters char(2), taxcode_country_code char(4), istat integer, minint integer);
+
+pg_conn = PG.connect( dbname: 'country_codes', user: "postgres" )
+psql_query = "INSERT INTO country_codes (english_country_name, italian_country_name_1, italian_country_name_2, iso3361_3_characters, iso3361_2_characters, taxcode_country_code, istat, minint) VALUES ($1::text, $2::text, $3::text, $4::text, $5::char(3), $6::char(4), $7::int, $8::int)"
+pg_conn.prepare("insert_data", psql_query)
+pg_conn.exec("DELETE FROM country_codes")
+
+pg_conn.transaction do |conn|
+  records.each do |country|
+    conn.exec_prepared("insert_data", [country[:english_country_name], country[:italian_country_name_1],
+                                       country[:italian_country_name_2], country[:iso3361_3_characters],
+                                       country[:iso3361_2_characters], country[:taxcode_country_code],
+                                       country[:istat], country[:minint]])
+  end
+end
+pg_conn.close
+# pg_dump -U postgres --table country_codes country_codes > dist/country_codes.psql
+
+# insert in mysql
+#mysql -u root -p
+#create database country_codes default character set utf8 collate utf8_unicode_ci;
+#mysql -u root -p country_codes
+#create table country_codes (english_country_name text, italian_country_name_1 text, italian_country_name_2 text, iso3361_3_characters char(3), iso3361_2_characters char(2), taxcode_country_code char(4), istat integer, minint integer);
+
+mysql_conn = Mysql2::Client.new(host: "localhost", username: ENV["MYSQL_USER"], password: ENV["MYSQL_PASS"], database: "country_codes")
+mysql_query = "INSERT INTO country_codes (english_country_name, italian_country_name_1, italian_country_name_2, iso3361_3_characters, iso3361_2_characters, taxcode_country_code, istat, minint) VALUES (?, ?, ?, ?, ?, ?, ?, ?)"
+insert_data = mysql_conn.prepare(mysql_query)
+mysql_conn.query("DELETE FROM country_codes")
+begin
+  mysql_conn.query("BEGIN")
+  records.each do |country|
+    insert_data.execute(country[:english_country_name], country[:italian_country_name_1],
+                        country[:italian_country_name_2], country[:iso3361_3_characters],
+                        country[:iso3361_2_characters], country[:taxcode_country_code],
+                        country[:istat], country[:minint])
+  end
+  mysql_conn.query("COMMIT")
+rescue => e
+  p e
+  mysql_conn.query("ROLLBACK")
+end
+mysql_conn.close
+# mysqldump -u root -p country_codes country_codes > dist/country_codes.mysql
+
+records.each do |country|
+  # insert in mongo
+end
