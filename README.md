@@ -54,9 +54,10 @@ There are two ```italian_country_name``` fields because the data sources sometim
 * ```ESTERI.XLS``` from http://www.agenziaentrate.gov.it/wps/content/Nsilib/Nsi/Strumenti/Codici+attivita+e+tributo/Codici+territorio/Comuni+italia+esteri/
 * ```COD_EXT.xls``` unofficial data from an XLS embedded at the end of http://assistenzascot.insiel.it/reposit/Demografico%20-%20Documenti%20pubblicati/Codifica_esteri.doc
 
-The two Excel files are not included in the repository because I'm unsure about their license.
+*The two Excel files are not included* in the repository because I'm unsure about their license.
+If you want to run the generator script you must download them to the ```data``` directory.
 
-## Generator
+## Generator script
 
 The files in the ```dist``` directory have been generated with the ```make-tables.rb``` Ruby script.
 It's not necessary to run it because the generated files are in the repository but in case you want to or have to (updates to the data, JSON and Ruby files with different indexes):
@@ -74,7 +75,8 @@ tables or (in the case of MongoDB) the collection.
 Then there is a line that creates the connection to the database. You'll need to customize it.
 The script is currently written to get the MySQL credentials from the environment and must be run like this
 ```MYSQL_USER=user MYSQL_PASS=pass ruby make-tables.rb```.
-It assumes that no credential are needed to connect to the PostgreSQL and MongoDB. Works for me but probably not for you.
+It assumes that no credential are needed to connect to the PostgreSQL. Works for me but probably not for you.
+The connection details for mongo are in the ```mongo.yml``` file.
 
 At the end of every database's section there is another comment with the CLI command to dump the country_codes tables/collection to the ```dist``` directory.
 
@@ -107,6 +109,6 @@ IN NO EVENT SHALL THE AUTHORS BE LIABLE FOR ANY CLAIM, DAMAGES OR
 OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE,
 ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR
 OTHER DEALINGS IN THE SOFTWARE.
-
-For more information, please refer to <http://unlicense.org/>
 ```
+
+For more information, please refer to http://unlicense.org/
