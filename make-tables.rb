@@ -131,6 +131,34 @@ File.open("dist/countries.json", "w") do |file|
   file.puts countries.to_json
 end
 
+File.open("dist/ruby/countries/tax_code.rb", "w") do |file|
+  file.puts %(
+module Countries
+  class TaxCode
+    def self.get(tax_code)
+      CODES[tax_code]
+    end
+    private
+    CODES = #{country_codes.to_json.gsub(":", "=>").gsub("=>null", "=>nil")}
+  end
+end
+)
+end
+
+File.open("dist/ruby/countries/iso3361_1_alpha_3.rb", "w") do |file|
+  file.puts %(
+module Countries
+  class Iso3361_1_Alpha_3
+    def self.get(iso3361_3_characters)
+      CODES[iso3361_3_characters]
+    end
+    private
+    CODES = #{countries.to_json.gsub(":", "=>").gsub("=>null", "=>nil")}
+  end
+end
+)
+end
+
 records = (country_codes.values + countries.values).uniq
 
 # CONFIGURATION
